@@ -63,37 +63,31 @@ module.exports = function (grunt) {
       styles: {
         files: ['<%%= config.app %>/styles/{,*/}*.css'],
         tasks: ['newer:copy:styles', 'autoprefixer']
-      },
-      livereload: {
-        options: {
-          livereload: '<%%= connect.options.livereload %>'
-        },
-        files: [
-          '<%%= config.app %>/{,*/}*.html',
-          '.tmp/styles/{,*/}*.css',<% if (coffee) { %>
-          '.tmp/scripts/{,*/}*.js',<% } %>
-          '<%%= config.app %>/images/{,*/}*'
-        ]
       }
     },
 
     // The actual grunt server settings
-    connect: {
-      options: {
-        port: 9000,
-        open: true,
-        livereload: 35729,
-        // Change this to '0.0.0.0' to access the server from outside
-        hostname: 'localhost'
-      },
-      livereload: {
+    browserSync: {
+      server: {
+        bsFiles: {
+          src: [
+            '<%%= config.app %>/{,*/}*.html',<% if (includeSass) { %>
+            '.tmp/styles/{,*/}*.css',<% } %>
+            '<%%= config.app %>/styles/{,*/}*.css',<% if (coffee) { %>
+            '.tmp/scripts/{,*/}*.js',<% } %>
+            '<%%= config.app %>/scripts/{,*/}*.js',
+            '<%%= config.app %>/bower_components/{,*/}*.js',
+            '<%%= config.app %>/images/{,*/}*.{png,jpg,jpeg,gif,webp,svg}'
+          ]
+        },
         options: {
-          middleware: function(connect) {
-            return [
-              connect.static('.tmp'),
-              connect().use('/bower_components', connect.static('./bower_components')),
-              connect.static(config.app)
-            ];
+          port: 9000,
+          watchTask: true,
+          server: {
+            baseDir: ['.tmp', '<%= config.app %>'],
+            routes: {
+              '/bower_components': './bower_components'
+            }
           }
         }
       },
@@ -101,20 +95,19 @@ module.exports = function (grunt) {
         options: {
           open: false,
           port: 9001,
-          middleware: function(connect) {
-            return [
-              connect.static('.tmp'),
-              connect.static('test'),
-              connect().use('/bower_components', connect.static('./bower_components')),
-              connect.static(config.app)
-            ];
+          watchTask: true,
+          server: {
+            baseDir: ['.tmp', 'test', '<%= config.app %>'],
+            routes: {
+              '/bower_components': './bower_components'
+            }
           }
         }
       },
       dist: {
         options: {
           base: '<%%= config.dist %>',
-          livereload: false
+          codeSync: false
         }
       }
     },
@@ -153,7 +146,7 @@ module.exports = function (grunt) {
       all: {
         options: {
           run: true,
-          urls: ['http://<%%= connect.test.options.hostname %>:<%%= connect.test.options.port %>/index.html']
+          urls: ['http://localhost:<%%= browserSync.test.options.port %>/index.html']
         }
       }
     },<% } else if (testFramework === 'jasmine') { %>
@@ -437,11 +430,8 @@ module.exports = function (grunt) {
 
 
   grunt.registerTask('serve', 'start the server and preview your app, --allow-remote for remote access', function (target) {
-    if (grunt.option('allow-remote')) {
-      grunt.config.set('connect.options.hostname', '0.0.0.0');
-    }
     if (target === 'dist') {
-      return grunt.task.run(['build', 'connect:dist:keepalive']);
+      return grunt.task.run(['build', 'browserSync:dist']);
     }
 
     grunt.task.run([
@@ -449,7 +439,7 @@ module.exports = function (grunt) {
       'wiredep',
       'concurrent:server',
       'autoprefixer',
-      'connect:livereload',
+      'browserSync:server',
       'watch'
     ]);
   });
@@ -469,7 +459,7 @@ module.exports = function (grunt) {
     }
 
     grunt.task.run([
-      'connect:test',<% if (testFramework === 'mocha') { %>
+      'browserSync:test',<% if (testFramework === 'mocha') { %>
       'mocha'<% } else if (testFramework === 'jasmine') { %>
       'jasmine'<% } %>
     ]);
